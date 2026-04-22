@@ -1,0 +1,59 @@
+{
+  "name": "@granularjs/codemods",
+  "version": "0.1.0",
+  "description": "Codemods to migrate React projects to @granularjs/core + @granularjs/jsx. Powered by jscodeshift.",
+  "type": "commonjs",
+  "main": "./src/index.js",
+  "module": "./src/index.js",
+  "types": "./types/index.d.ts",
+  "bin": {
+    "granular-codemod": "./bin/granular-codemod.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./types/index.d.ts",
+      "import": "./src/index.js",
+      "default": "./src/index.js"
+    },
+    "./runner": "./src/runner.js",
+    "./transforms/*": "./src/transforms/*.js"
+  },
+  "files": [
+    "bin",
+    "src",
+    "types",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "test": "node ./scripts/run-tests.mjs"
+  },
+  "dependencies": {
+    "jscodeshift": "^17.1.2"
+  },
+  "devDependencies": {
+    "@granularjs/core": "file:../granular",
+    "@granularjs/jsx": "file:../granular-jsx",
+    "@babel/core": "^7.28.0",
+    "@babel/preset-react": "^7.28.0",
+    "jsdom": "^26.1.0"
+  },
+  "license": "Apache-2.0",
+  "keywords": [
+    "granular",
+    "granularjs",
+    "codemod",
+    "jscodeshift",
+    "react",
+    "migration",
+    "react-to-granular"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/zerobytes/granular-codemods.git"
+  },
+  "homepage": "https://granular.web.app",
+  "bugs": {
+    "url": "https://github.com/zerobytes/granular-codemods/issues"
+  }
+}
