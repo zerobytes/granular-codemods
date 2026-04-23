@@ -1,2 +1,2 @@
 import { defineFixtureTests } from './helpers/fixture-test.mjs';
-defineFixtureTests('useRef-to-signal');
+defineFixtureTests('useRef-to-state');

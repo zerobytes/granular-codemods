@@ -18,8 +18,8 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const fixtureDir = path.join(here, '__integration__', 'react-app');
 
 const ORDERED = [
-  'useState-to-signal',
-  'useRef-to-signal',
+  'useState-to-state',
+  'useRef-to-state',
   'useMemo-to-derive',
   'useEffect-to-after',
   'useCallback-remove',
@@ -204,7 +204,7 @@ test('migrate integration: end-to-end React → Granular', async () => {
 
   const counterMigrated = fs.readFileSync(path.join(tmp, 'src', 'Counter.jsx'), 'utf8');
   assert.match(counterMigrated, /from "@granularjs\/core"/);
-  assert.match(counterMigrated, /signal\(0\)/);
+  assert.match(counterMigrated, /state\(0\)/);
   assert.doesNotMatch(counterMigrated, /useState/);
 
   const listMigrated = fs.readFileSync(path.join(tmp, 'src', 'List.jsx'), 'utf8');

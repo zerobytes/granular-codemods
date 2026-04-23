@@ -4,14 +4,14 @@
  * Codemod: residual `setX(prev => ...)` updater patterns
  * → `x.set(((prev) => ...)(x.get()))`.
  *
- * This is a safety net: the main `useState-to-signal` transform already
- * handles updater forms. Run this AFTER `useState-to-signal` only if you
+ * This is a safety net: the main `useState-to-state` transform already
+ * handles updater forms. Run this AFTER `useState-to-state` only if you
  * have hand-written code that still uses the React `setX(prev => ...)`
- * style with bindings whose name is a Granular signal.
+ * style with bindings whose name is a Granular state or signal.
  *
  * Heuristic: any call where the callee is `Identifier` named `setX` and the
  * arg is an arrow with a single param. This codemod only runs if a sibling
- * `const x = signal(...)` declaration exists in the same scope.
+ * `const x = state(...)` (or `signal(...)`) declaration exists in scope.
  */
 
 module.exports = function transformer(file, api) {
@@ -19,24 +19,25 @@ module.exports = function transformer(file, api) {
   const root = j(file.source);
   let touched = false;
 
-  const signalNames = new Set();
+  const stateNames = new Set();
   root.find(j.VariableDeclarator).forEach((path) => {
     const node = path.node;
     if (!node.id || node.id.type !== 'Identifier') return;
     if (!node.init || node.init.type !== 'CallExpression') return;
-    if (node.init.callee.type === 'Identifier' && node.init.callee.name === 'signal') {
-      signalNames.add(node.id.name);
+    const calleeName = node.init.callee.type === 'Identifier' ? node.init.callee.name : null;
+    if (calleeName === 'state' || calleeName === 'signal') {
+      stateNames.add(node.id.name);
     }
   });
 
-  if (!signalNames.size) return file.source;
+  if (!stateNames.size) return file.source;
 
   root.find(j.CallExpression, { callee: { type: 'Identifier' } }).forEach((path) => {
     const callee = path.node.callee;
     const setterName = callee.name;
     if (!/^set[A-Z]/.test(setterName)) return;
     const candidate = setterName.charAt(3).toLowerCase() + setterName.slice(4);
-    if (!signalNames.has(candidate)) return;
+    if (!stateNames.has(candidate)) return;
 
     const args = path.node.arguments;
     if (args.length !== 1) return;

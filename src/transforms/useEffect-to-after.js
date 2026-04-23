@@ -50,12 +50,24 @@ module.exports = function transformer(file, api) {
       if (!validDeps.length) return;
       ge.add('after');
 
+      const allDepsAreIdentifiers = validDeps.every((d) => d.type === 'Identifier');
+      const callbackHasNoParams = !fn.params || fn.params.length === 0;
+      let callback = fn;
+      if (allDepsAreIdentifiers && callbackHasNoParams) {
+        const params = validDeps.map((d) => j.identifier(d.name));
+        if (fn.type === 'ArrowFunctionExpression') {
+          callback = j.arrowFunctionExpression(params, fn.body, fn.async);
+        } else if (fn.type === 'FunctionExpression') {
+          callback = j.functionExpression(fn.id || null, params, fn.body, fn.generator, fn.async);
+        }
+      }
+
       const newCall = j.callExpression(
         j.memberExpression(
           j.callExpression(j.identifier('after'), validDeps),
           j.identifier('change'),
         ),
-        [fn],
+        [callback],
       );
       replaceStatement(j, path, j.expressionStatement(newCall));
       touched = true;

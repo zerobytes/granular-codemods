@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * Codemod: React `useRef` → Granular `signal`.
+ * Codemod: React `useRef` → Granular `state`.
  *
  *   const ref = useRef(null)
  *   ref.current = el
@@ -9,13 +9,13 @@
  *
  *   becomes
  *
- *   const ref = signal(null)
+ *   const ref = state(null)
  *   ref.set(el)
  *   ref.get()
  *
  * Notes:
  *  - Refs used as `<div ref={ref}/>` keep working: the JSX runtime accepts
- *    a Signal and sets it after mount.
+ *    a State and assigns the DOM node after mount.
  */
 
 const { granularImports, removeReactNamedImport } = require('../utils/granular-imports');
@@ -35,9 +35,9 @@ module.exports = function transformer(file, api) {
     if (!isUseRefCall(node.init)) return;
 
     const initialArg = node.init.arguments[0] || j.identifier('null');
-    path.replace(j.variableDeclarator(j.identifier(node.id.name), j.callExpression(j.identifier('signal'), [initialArg])));
+    path.replace(j.variableDeclarator(j.identifier(node.id.name), j.callExpression(j.identifier('state'), [initialArg])));
     refNames.add(node.id.name);
-    ge.add('signal');
+    ge.add('state');
     touched = true;
   });
 

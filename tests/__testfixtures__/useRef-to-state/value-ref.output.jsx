@@ -1,7 +1,7 @@
-import { signal } from "@granularjs/core";
+import { state } from "@granularjs/core";
 
 function Counter() {
-  const counter = signal(0);
+  const counter = state(0);
   function inc() {
     counter.set(counter.get() + 1);
   }

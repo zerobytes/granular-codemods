@@ -4,7 +4,7 @@
  * In-process runner for the JS/TSX codemods (no separate child process).
  *
  *   const { runTransformOnSource } = require('@granularjs/codemods/runner');
- *   const out = await runTransformOnSource('useState-to-signal', src, { path: 'foo.tsx' });
+ *   const out = await runTransformOnSource('useState-to-state', src, { path: 'foo.tsx' });
  *
  * The runner uses jscodeshift's programmatic API.
  */
@@ -45,8 +45,8 @@ function runTransformOnSource(name, source, opts = {}) {
 }
 
 const TRANSFORMS = [
-  'useState-to-signal',
-  'useRef-to-signal',
+  'useState-to-state',
+  'useRef-to-state',
   'useMemo-to-derive',
   'useEffect-to-after',
   'useCallback-remove',

@@ -1,8 +1,8 @@
-import { signal } from "@granularjs/core";
+import { state } from "@granularjs/core";
 
 function Form() {
-  const name = signal('');
-  const age = signal(0);
+  const name = state('');
+  const age = state(0);
   return (
     <div>
       <input value={name} onInput={(e) => name.set(e.target.value)} />

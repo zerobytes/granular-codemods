@@ -15,15 +15,33 @@ npm install --save-dev @granularjs/codemods
 If you have the `granular` CLI (from `@granularjs/core`) installed:
 
 ```bash
-npx granular migrate ./src
+# Basic: writes the migrated copy to "<source>-granular" next to your source
+npx granular migrate ./my-react-app
+
+# Explicit output path
+npx granular migrate ./my-react-app --out ./my-granular-app
+
+# Preview only (no files touched, no destination created)
+npx granular migrate ./my-react-app --dry-run
+
+# Overwrite an existing destination
+npx granular migrate ./my-react-app --out ./out --force
 ```
 
-This runs every codemod in the right order, plus dependency/config rewrites and a `MIGRATION_REPORT.md`.
+The migration is **always non-destructive**: the source folder is never
+modified. The CLI clones the project to the destination first (skipping
+`node_modules`, `dist`, build caches, etc.) and runs every codemod plus
+dependency/config rewrites against the **clone**. A `MIGRATION_REPORT.md`
+is written to the destination, with `diff` instructions to compare against
+the source.
+
+Steps the migration runs (use `--steps` / `--skip` to control them):
+`discover, clone, deps, config, codemods, lint, audit, report`.
 
 ## Use individual transforms
 
 ```bash
-npx granular-codemod useState-to-signal ./src
+npx granular-codemod useState-to-state ./src
 npx granular-codemod array-map-to-list ./src/components/List.jsx
 npx granular-codemod react-imports ./src
 ```
@@ -34,12 +52,12 @@ npx granular-codemod react-imports ./src
 
 | Transform | What it does |
 | --- | --- |
-| `useState-to-signal` | `const [x, setX] = useState(0)` → `const x = signal(0)`; rewrites `setX(v)` and `setX(prev => …)`. |
-| `useRef-to-signal` | `const ref = useRef(null)` → `const ref = signal(null)`; rewrites `ref.current` reads/writes. |
+| `useState-to-state` | `const [x, setX] = useState(0)` → `const x = state(0)`; rewrites `setX(v)` and `setX(prev => …)`. Surviving shorthand references to the setter (e.g. `{x, setX}`) are expanded to `{x, setX: x.set}`. |
+| `useRef-to-state` | `const ref = useRef(null)` → `const ref = state(null)`; rewrites `ref.current` reads/writes. |
 | `useMemo-to-derive` | `useMemo(() => expr, [deps])` → `derive(() => expr)` (deps inferred reactively). |
-| `useEffect-to-after` | `useEffect(fn, [a, b])` → `after(a, b).change(fn)`; empty/missing deps become a one-shot call with a TODO. |
+| `useEffect-to-after` | `useEffect(fn, [a, b])` → `after(a, b).change((a, b) => fn(...))`. When deps are simple identifiers and the callback has no params, the dep names are bound as the callback parameters so the body keeps using each dep as a plain value. Empty/missing deps become a one-shot call with a TODO. |
 | `useCallback-remove` | `useCallback(fn, deps)` → `fn`. |
-| `useContext-to-context` | `useContext(Ctx)` → `Ctx.state()`; flags `<Ctx.Provider>` JSX usages. |
+| `useContext-to-context` | `createContext(default)` → `context(default)`; `useContext(Ctx)` → `Ctx.state()`; `<Ctx.Provider value={x}>{children}</Ctx.Provider>` → `Ctx.scope(x).serve(children)`. |
 | `setState-updater` | Catch-all for `setX(prev => …)` patterns left over after the previous transforms. |
 
 ### Rendering
@@ -63,7 +81,7 @@ npx granular-codemod react-imports ./src
 ```js
 const { runTransformOnSource, runAll } = require('@granularjs/codemods/runner');
 
-const out = runTransformOnSource('useState-to-signal', source, { path: 'Counter.jsx' });
+const out = runTransformOnSource('useState-to-state', source, { path: 'Counter.jsx' });
 ```
 
 ## License
