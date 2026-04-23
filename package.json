@@ -26,7 +26,13 @@
     "LICENSE"
   ],
   "scripts": {
-    "test": "node ./scripts/run-tests.mjs"
+    "test": "node ./scripts/run-tests.mjs",
+    "prepublishOnly": "npm test",
+    "version": "git add -A",
+    "postversion": "git push && git push origin v$(node -p \"require('./package.json').version\")",
+    "release:patch": "./release.sh patch",
+    "release:minor": "./release.sh minor",
+    "release:major": "./release.sh major"
   },
   "dependencies": {
     "jscodeshift": "^17.1.2"
