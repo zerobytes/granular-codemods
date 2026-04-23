@@ -1,19 +1,21 @@
 'use strict';
 
 /**
- * Codemod: React `useEffect` → Granular `after(...).change(fn)` or one-shot run.
+ * Codemod: React `useEffect` → Granular `after(...).effect(fn)` (run on
+ * mount + on change, mirroring React's semantics) or a one-shot run.
  *
  *   useEffect(() => { ... }, [a, b])
- *     → after(a, b).change(() => { ... })
+ *     → after(a, b).effect(() => { ... })
+ *       (`effect` runs the callback once with the current values and
+ *        re-runs it whenever any target changes — this matches React's
+ *        "mount + on dep change" behavior. `change` only fires on
+ *        subsequent updates, so it would silently skip the mount run.)
  *
  *   useEffect(() => { ... }, [])
- *     → // Run once: just call the function (or queue a microtask)
- *       (() => { ... })()
+ *     → (() => { ... })()  // run once at construction
  *
  *   useEffect(() => { ... })
- *     → // No deps means "after every render" in React.
- *       // In Granular there is no rerender; this becomes a one-time call
- *       // with a TODO comment for the developer to revisit.
+ *     → one-time call with a TODO comment.
  *
  * Cleanup functions returned from the callback are preserved as-is (the
  * developer must tie cleanup to component unmount manually for now — this
@@ -65,7 +67,7 @@ module.exports = function transformer(file, api) {
       const newCall = j.callExpression(
         j.memberExpression(
           j.callExpression(j.identifier('after'), validDeps),
-          j.identifier('change'),
+          j.identifier('effect'),
         ),
         [callback],
       );

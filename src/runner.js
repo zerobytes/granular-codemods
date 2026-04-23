@@ -58,6 +58,7 @@ const TRANSFORMS = [
   'react-namespace',
   'react-component-to-variadic',
   'react-imports',
+  'state-deref-args',
   'vite-config',
 ];
 
