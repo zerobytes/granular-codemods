@@ -27,6 +27,9 @@ const ORDERED = [
   'setState-updater',
   'array-map-to-list',
   'conditional-jsx-to-when',
+  'react-router-to-granular',
+  'react-namespace',
+  'react-component-to-variadic',
   'react-imports',
 ];
 
@@ -159,6 +162,7 @@ async function buildModuleGraph(rootDir) {
     }
 
     code = code.replace(/from ['"]@granularjs\/jsx\/jsx-runtime['"]/g, `from '${jsxRuntimeUrl}'`);
+    code = code.replace(/from ['"]@granularjs\/jsx['"]/g, `from '${pathToFileURL(path.resolve(here, '..', 'node_modules', '@granularjs', 'jsx', 'src', 'index.js')).href}'`);
     code = code.replace(new RegExp(`from ['"]@granularjs/core['"]`, 'g'), `from '${corePath()}'`);
     code = code.replace(localImportRe, (m, rel) => {
       const url = childMap.get(rel);

@@ -44,35 +44,83 @@ module.exports = function transformer(file, api) {
     }
   });
 
+  // Track variables created from createRoot calls so we can also handle the
+  // two-step pattern:
+  //   const root = ReactDOM.createRoot(target); root.render(<App/>);
+  // The variable declarator stores its mount target so that when we later see
+  // root.render(<App/>) we can rewrite it to bootstrap(target, <App/>).
+  const rootBindings = new Map(); // identifierName -> { targetExpr, declPath }
+
+  function isCreateRootCallExpr(node) {
+    if (!node || node.type !== 'CallExpression') return false;
+    const c = node.callee;
+    if (c.type === 'Identifier' && c.name === 'createRoot') return true;
+    if (c.type === 'MemberExpression' && !c.computed
+      && c.property.type === 'Identifier' && c.property.name === 'createRoot') return true;
+    return false;
+  }
+
+  root.find(j.VariableDeclarator).forEach((path) => {
+    const node = path.node;
+    if (!node.id || node.id.type !== 'Identifier') return;
+    if (!isCreateRootCallExpr(node.init)) return;
+    const target = node.init.arguments[0];
+    if (!target) return;
+    rootBindings.set(node.id.name, { targetExpr: target, declPath: path });
+  });
+
   root.find(j.CallExpression, {
     callee: { type: 'MemberExpression', property: { type: 'Identifier', name: 'render' } },
   }).forEach((path) => {
     const obj = path.node.callee.object;
-    let target = null;
+    let mountTarget = null;
     let renderable = path.node.arguments[0];
-    let mountTarget = path.node.arguments[1];
+    let consumedRootBinding = null;
 
-    if (obj && obj.type === 'CallExpression' && obj.callee.type === 'Identifier' && obj.callee.name === 'createRoot') {
-      target = obj.arguments[0];
-      mountTarget = target;
+    if (obj && obj.type === 'CallExpression' && isCreateRootCallExpr(obj)) {
+      // ReactDOM.createRoot(target).render(node) | createRoot(target).render(node)
+      mountTarget = obj.arguments[0];
     } else if (obj && obj.type === 'Identifier' && obj.name === 'ReactDOM') {
-      // ReactDOM.render(node, target) — args order: renderable, target
-    } else if (obj && obj.type === 'MemberExpression' && obj.property.name === 'createRoot') {
-      const cr = path.node.callee.object;
-      if (cr.type === 'CallExpression') {
-        target = cr.arguments[0];
-        mountTarget = target;
-      }
+      // ReactDOM.render(node, target)
+      mountTarget = path.node.arguments[1];
+    } else if (obj && obj.type === 'Identifier' && rootBindings.has(obj.name)) {
+      // Two-step: const root = ReactDOM.createRoot(target); root.render(node);
+      const binding = rootBindings.get(obj.name);
+      mountTarget = binding.targetExpr;
+      consumedRootBinding = obj.name;
     } else {
       return;
     }
 
-    if (!renderable) return;
-    if (!mountTarget) return;
+    if (!renderable || !mountTarget) return;
 
-    path.replace(j.callExpression(j.identifier('bootstrap'), [mountTarget, renderable]));
+    let bootstrapArg = renderable;
+    if (renderable.type === 'JSXElement') {
+      const opening = renderable.openingElement;
+      const hasProps = (opening.attributes || []).length > 0;
+      const hasChildren = (renderable.children || []).some(
+        (c) => !(c.type === 'JSXText' && /^\s*$/.test(c.value)),
+      );
+      if (!hasProps && !hasChildren && opening.name && opening.name.type === 'JSXIdentifier') {
+        bootstrapArg = j.identifier(opening.name.name);
+      } else {
+        bootstrapArg = j.arrowFunctionExpression([], renderable);
+      }
+    }
+
+    path.replace(j.callExpression(j.identifier('bootstrap'), [bootstrapArg, mountTarget]));
     ge.add('bootstrap');
     touched = true;
+
+    if (consumedRootBinding) {
+      const binding = rootBindings.get(consumedRootBinding);
+      const declParent = binding.declPath.parent && binding.declPath.parent.node;
+      if (declParent && declParent.type === 'VariableDeclaration' && declParent.declarations.length === 1) {
+        j(binding.declPath.parent).remove();
+      } else {
+        j(binding.declPath).remove();
+      }
+    }
   });
 
   if (touched) ge.flush();

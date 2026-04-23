@@ -46,7 +46,15 @@ module.exports = function transformer(file, api) {
     if (!isUseContextCallee(path.node.callee)) return;
     const args = path.node.arguments;
     if (args.length !== 1 || args[0].type !== 'Identifier') return;
-    path.replace(j.callExpression(j.memberExpression(args[0], j.identifier('state')), []));
+    path.replace(
+      j.callExpression(
+        j.memberExpression(
+          j.callExpression(j.memberExpression(args[0], j.identifier('state')), []),
+          j.identifier('get'),
+        ),
+        [],
+      ),
+    );
     touched = true;
   });
 

@@ -6,4 +6,4 @@ export function ThemeProvider({ children, value }) {
   return (ThemeCtx.scope(value).serve(children));
 }
 
-export const useTheme = () => ThemeCtx.state();
+export const useTheme = () => ThemeCtx.state().get();

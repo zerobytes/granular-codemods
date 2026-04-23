@@ -54,6 +54,9 @@ const TRANSFORMS = [
   'setState-updater',
   'array-map-to-list',
   'conditional-jsx-to-when',
+  'react-router-to-granular',
+  'react-namespace',
+  'react-component-to-variadic',
   'react-imports',
   'vite-config',
 ];

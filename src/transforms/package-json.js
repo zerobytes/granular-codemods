@@ -13,7 +13,7 @@
  * Returns { source, changed }.
  */
 
-const REACT_DEPS = new Set(['react', 'react-dom']);
+const REACT_DEPS = new Set(['react', 'react-dom', 'react-router-dom', 'react-router']);
 const REACT_DEV_DEPS = new Set([
   '@types/react',
   '@types/react-dom',

@@ -20,46 +20,48 @@ module.exports = function transformer(file, api) {
 
   const reactiveNames = collectReactiveNames(j, root);
 
+  function wrapConditionalWithWhen(condExpr) {
+    const cond = condExpr.test;
+    const consArrow = j.arrowFunctionExpression([], condExpr.consequent);
+    const altIsNull = condExpr.alternate && (condExpr.alternate.type === 'NullLiteral' || (condExpr.alternate.type === 'Literal' && condExpr.alternate.value === null));
+    const args = [cond, consArrow];
+    if (!altIsNull) args.push(j.arrowFunctionExpression([], condExpr.alternate));
+    ge.add('when');
+    return j.callExpression(j.identifier('when'), args);
+  }
+
+  function wrapLogicalAndWithWhen(logicalExpr) {
+    ge.add('when');
+    return j.callExpression(j.identifier('when'), [
+      logicalExpr.left,
+      j.arrowFunctionExpression([], logicalExpr.right),
+    ]);
+  }
+
   root.find(j.JSXExpressionContainer).forEach((path) => {
     const expr = path.node.expression;
-
     if (!expr) return;
 
-    if (expr.type === 'LogicalExpression' && expr.operator === '&&') {
-      if (!isJSX(expr.right)) return;
-      const cond = expr.left;
-      if (cond.type !== 'Identifier') {
-        addTrailingTodo(j, path, ' TODO[granular-codemod]: complex truthy short-circuit. Wrap in when(cond, () => <X/>) manually.');
-        return;
-      }
-      if (!reactiveNames.has(cond.name)) {
-        addTrailingTodo(j, path, ` TODO[granular-codemod]: '${cond.name}' is not a known reactive source in this file. If it is reactive, replace this expression with when(${cond.name}, () => <X/>).`);
-        return;
-      }
-      path.node.expression = j.callExpression(j.identifier('when'), [
-        cond,
-        j.arrowFunctionExpression([], expr.right),
-      ]);
-      ge.add('when');
+    if (expr.type === 'LogicalExpression' && expr.operator === '&&' && isJSXOrNull(expr.right)) {
+      path.node.expression = wrapLogicalAndWithWhen(expr);
       touched = true;
       return;
     }
 
-    if (expr.type === 'ConditionalExpression') {
-      if (!isJSX(expr.consequent) || !isJSX(expr.alternate)) return;
-      const cond = expr.test;
-      if (cond.type !== 'Identifier' || !reactiveNames.has(cond.name)) {
-        addTrailingTodo(j, path, ' TODO[granular-codemod]: ternary with JSX branches. Wrap in when(cond, () => <A/>, () => <B/>).');
-        return;
-      }
-      path.node.expression = j.callExpression(j.identifier('when'), [
-        cond,
-        j.arrowFunctionExpression([], expr.consequent),
-        j.arrowFunctionExpression([], expr.alternate),
-      ]);
-      ge.add('when');
+    if (expr.type === 'ConditionalExpression' && (isJSXOrNull(expr.consequent) || isJSXOrNull(expr.alternate))) {
+      path.node.expression = wrapConditionalWithWhen(expr);
       touched = true;
     }
+  });
+
+  root.find(j.ConditionalExpression).forEach((path) => {
+    const expr = path.node;
+    if (!isJSXOrNull(expr.consequent) && !isJSXOrNull(expr.alternate)) return;
+    const parent = path.parent && path.parent.node;
+    if (parent && parent.type === 'JSXExpressionContainer') return;
+    if (parent && parent.type === 'CallExpression' && parent.callee && parent.callee.type === 'Identifier' && parent.callee.name === 'when') return;
+    path.replace(wrapConditionalWithWhen(expr));
+    touched = true;
   });
 
   if (touched) ge.flush();
@@ -70,6 +72,14 @@ module.exports.parser = 'tsx';
 
 function isJSX(node) {
   return node && (node.type === 'JSXElement' || node.type === 'JSXFragment');
+}
+
+function isJSXOrNull(node) {
+  if (!node) return false;
+  if (isJSX(node)) return true;
+  if (node.type === 'NullLiteral') return true;
+  if (node.type === 'Literal' && node.value === null) return true;
+  return false;
 }
 
 function collectReactiveNames(j, root) {

@@ -33,9 +33,12 @@ module.exports = function transformer(file, api) {
     const args = path.node.arguments;
     if (!args.length) return;
     const fn = args[0];
-    if (fn.type !== 'ArrowFunctionExpression' && fn.type !== 'FunctionExpression') return;
+    let callback = fn;
+    if (fn.type !== 'ArrowFunctionExpression' && fn.type !== 'FunctionExpression') {
+      callback = j.arrowFunctionExpression([], j.callExpression(fn, []));
+    }
 
-    path.replace(j.callExpression(j.identifier('derive'), [fn]));
+    path.replace(j.callExpression(j.identifier('derive'), [callback]));
     ge.add('derive');
     touched = true;
   });

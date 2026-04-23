@@ -65,6 +65,25 @@ module.exports = function transformer(file, api) {
     return touched ? root.toSource() : file.source;
   }
 
+  const STATE_API_PROPS = new Set(['get', 'set', 'patch', 'subscribe', 'before', 'mutate']);
+  const stateValueNames = new Set(stateBindings.values());
+
+  for (const valueName of stateValueNames) {
+    root.find(j.CallExpression).forEach((path) => {
+      const callee = path.node.callee;
+      if (!callee || callee.type !== 'MemberExpression') return;
+      if (callee.computed) return;
+      if (!callee.object || callee.object.type !== 'Identifier' || callee.object.name !== valueName) return;
+      if (!callee.property || callee.property.type !== 'Identifier') return;
+      if (STATE_API_PROPS.has(callee.property.name)) return;
+      callee.object = j.callExpression(
+        j.memberExpression(j.identifier(valueName), j.identifier('get')),
+        [],
+      );
+      touched = true;
+    });
+  }
+
   for (const [setterName, valueName] of stateBindings.entries()) {
     root.find(j.CallExpression, { callee: { type: 'Identifier', name: setterName } }).forEach((path) => {
       const args = path.node.arguments;
@@ -106,14 +125,19 @@ module.exports = function transformer(file, api) {
         if (parent.type === 'JSXClosingElement' && parent.name === path.node) return;
         if (parent.type === 'TSTypeReference' || parent.type === 'TSQualifiedName') return;
 
+        const wrappedSetter = () => j.arrowFunctionExpression(
+          [j.identifier('v')],
+          j.callExpression(j.memberExpression(j.identifier(valueName), j.identifier('set')), [j.identifier('v')]),
+        );
+
         if (parent.type === 'Property' || parent.type === 'ObjectProperty') {
           if (parent.key === path.node && !parent.computed && !parent.shorthand) return;
           if (parent.shorthand && parent.key === path.node) {
             const isObjectPattern = path.parent.parent && path.parent.parent.node && path.parent.parent.node.type === 'ObjectPattern';
             if (isObjectPattern) return;
             const expanded = parent.type === 'Property'
-              ? j.property('init', j.identifier(setterName), j.memberExpression(j.identifier(valueName), j.identifier('set')))
-              : j.objectProperty(j.identifier(setterName), j.memberExpression(j.identifier(valueName), j.identifier('set')));
+              ? j.property('init', j.identifier(setterName), wrappedSetter())
+              : j.objectProperty(j.identifier(setterName), wrappedSetter());
             expanded.shorthand = false;
             path.parent.replace(expanded);
             touched = true;
@@ -124,7 +148,7 @@ module.exports = function transformer(file, api) {
         if (parent.type === 'AssignmentExpression' && parent.left === path.node) return;
         if (parent.type === 'UpdateExpression' && parent.argument === path.node) return;
 
-        path.replace(j.memberExpression(j.identifier(valueName), j.identifier('set')));
+        path.replace(wrappedSetter());
         touched = true;
       });
   }
