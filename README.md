@@ -2,7 +2,7 @@
 
 [jscodeshift](https://github.com/facebook/jscodeshift)-powered codemods that automatically translate React code to [`@granularjs/core`](https://github.com/zerobytes/granular) + [`@granularjs/jsx`](https://github.com/zerobytes/granular-jsx).
 
-These power the `granular migrate` CLI, but you can also run individual transforms standalone via `granular-codemod`.
+These power the `granular migrate` command (shipped via [`@granularjs/cli`](https://www.npmjs.com/package/@granularjs/cli)), but you can also run individual transforms standalone via `granular-codemod`.
 
 ## Install
 
@@ -12,20 +12,22 @@ npm install --save-dev @granularjs/codemods
 
 ## Use the high-level migration CLI
 
-If you have the `granular` CLI (from `@granularjs/core`) installed:
+Install the umbrella CLI and run `granular migrate`:
 
 ```bash
+npm install -g @granularjs/cli   # or: npx @granularjs/cli ...
+
 # Basic: writes the migrated copy to "<source>-granular" next to your source
-npx granular migrate ./my-react-app
+granular migrate ./my-react-app
 
 # Explicit output path
-npx granular migrate ./my-react-app --out ./my-granular-app
+granular migrate ./my-react-app --out ./my-granular-app
 
 # Preview only (no files touched, no destination created)
-npx granular migrate ./my-react-app --dry-run
+granular migrate ./my-react-app --dry-run
 
 # Overwrite an existing destination
-npx granular migrate ./my-react-app --out ./out --force
+granular migrate ./my-react-app --out ./out --force
 ```
 
 The migration is **always non-destructive**: the source folder is never
