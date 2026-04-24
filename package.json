@@ -1,6 +1,6 @@
 {
   "name": "@granularjs/codemods",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Codemods to migrate React projects to @granularjs/core + @granularjs/jsx. Powered by jscodeshift.",
   "type": "commonjs",
   "main": "./src/index.js",
